@@ -10,6 +10,23 @@ use Illuminate\Support\Facades\Validator;
 class SubmissionController extends Controller
 {
     /**
+     * Menampilkan semua submission dari sebuah form.
+     * Ini adalah method baru kita.
+     */
+    public function index(Form $form)
+    {
+        // Ambil semua submission milik form ini.
+        // Gunakan nested eager loading untuk mengambil data jawaban
+        // DAN juga data pertanyaan (field) terkait setiap jawaban.
+        $submissions = $form->submissions()
+                            ->with('submissionData.formField')
+                            ->latest('submitted_at') // Urutkan dari yang terbaru
+                            ->get();
+
+        return response()->json($submissions);
+    }
+    
+    /**
      * Menerima dan menyimpan data dari isian form.
      */
     public function store(Request $request, Form $form)
