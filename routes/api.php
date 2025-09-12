@@ -6,7 +6,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\FormFieldController;
 use App\Http\Controllers\SubmissionController;
-use App\Http\Controllers\AuthController; // <-- Tambahkan ini
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminController;
 
 // Rute Publik (tidak perlu login)
 Route::post('forms/{form}/submissions', [SubmissionController::class, 'store']);
@@ -28,4 +29,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Gantikan Route::post(...) yang lama dengan ini.
     // Ini akan membuat GET, POST, SHOW, DELETE untuk submissions.
     Route::apiResource('forms.submissions', SubmissionController::class)->scoped()->except(['update']);
+    Route::apiResource('admins', AdminController::class);
 });
