@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FormField extends Model
 {
@@ -21,5 +22,13 @@ class FormField extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(Form::class);
+    }
+
+    /**
+     * Mendefinisikan bahwa sebuah 'FormField' memiliki banyak 'Option'.
+     */
+    public function options(): HasMany
+    {
+        return $this->hasMany(FormFieldOption::class);
     }
 }

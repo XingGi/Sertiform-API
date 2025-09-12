@@ -8,8 +8,10 @@ use App\Http\Controllers\FormFieldController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\FileUploadController;
 
 // Rute Publik (tidak perlu login)
+Route::post('/uploads', [FileUploadController::class, 'store']);
 Route::post('forms/{form}/submissions', [SubmissionController::class, 'store']);
 Route::get('forms/{form}', [FormController::class, 'show']); // Kita anggap publik juga
 Route::post('/login', [AuthController::class, 'login']); // <-- Rute Login

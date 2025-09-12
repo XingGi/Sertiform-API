@@ -46,7 +46,7 @@ class FormController extends Controller
     public function show(Form $form)
     {
         // Memuat relasi category dan juga formFields
-        $form->load(['category', 'formFields']);
+        $form->load(['category', 'formFields.options']);
         return response()->json($form);
     }
 

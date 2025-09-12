@@ -27,7 +27,7 @@ class FormFieldController extends Controller
             'label' => 'required|string|max:255',
             'type' => [
                 'required',
-                Rule::in(['text', 'email', 'number', 'date', 'textarea']), // Tipe field yg diizinkan
+                Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file']), // Tipe field yg diizinkan
             ],
             'is_required' => 'required|boolean',
         ]);
@@ -69,7 +69,7 @@ class FormFieldController extends Controller
             'label' => 'sometimes|string|max:255',
             'type' => [
                 'sometimes',
-                Rule::in(['text', 'email', 'number', 'date', 'textarea']),
+                Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file']),
             ],
             'is_required' => 'sometimes|boolean',
         ]);
