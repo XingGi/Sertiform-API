@@ -30,6 +30,8 @@ class FormController extends Controller
             'description' => 'nullable|string',
             // 'exists:categories,id' memastikan category_id yang dikirim ada di tabel categories.
             'category_id' => 'required|exists:categories,id',
+            'is_template' => 'sometimes|boolean',
+            'meta_pixel_code' => 'nullable|string',
         ]);
 
         $form = Form::create($validatedData);
@@ -60,6 +62,8 @@ class FormController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
             'is_active' => 'sometimes|boolean', // 'sometimes' berarti hanya validasi jika ada di request
+            'is_template' => 'sometimes|boolean',
+            'meta_pixel_code' => 'nullable|string',
         ]);
 
         $form->update($validatedData);

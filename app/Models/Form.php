@@ -17,6 +17,8 @@ class Form extends Model
         'title',
         'description',
         'is_active',
+        'is_template',
+        'meta_pixel_code',
     ];
 
     /**
