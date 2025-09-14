@@ -4,18 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Form;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FormController extends Controller
 {
     /**
      * Menampilkan semua data form beserta kategorinya.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // 'with('category')' adalah Eager Loading.
-        // Ini membuat query lebih efisien dengan mengambil data form
-        // dan category sekaligus dalam satu waktu.
-        $forms = Form::with('category')->latest()->get();
+        $forms = Form::with('category')
+            ->when($request->has('is_template'), function ($query) use ($request) {
+                // Jika ada parameter ?is_template=... di URL, filter berdasarkan itu.
+                return $query->where('is_template', $request->query('is_template'));
+            })
+            ->latest()
+            ->get();
 
         return response()->json($forms);
     }
@@ -79,5 +83,41 @@ class FormController extends Controller
     {
         $form->delete();
         return response()->json(null, 204);
+    }
+
+    public function clone(Request $request, Form $form)
+    {
+        // Pastikan yang di-clone adalah sebuah template
+        if (!$form->is_template) {
+            return response()->json(['message' => 'Hanya template yang bisa di-clone.'], 400);
+        }
+
+        // Validasi judul untuk form baru
+        $validated = $request->validate(['title' => 'required|string|max:255']);
+
+        // Gunakan transaction untuk memastikan semua proses berhasil atau tidak sama sekali
+        $newForm = DB::transaction(function () use ($form, $validated) {
+            // 1. Duplikasi data form (template) menggunakan replicate()
+            $newForm = $form->replicate();
+            
+            // 2. Ubah propertinya menjadi form aktif dengan judul baru
+            $newForm->title = $validated['title'];
+            $newForm->is_template = false; // Ini penting!
+            $newForm->is_active = true; // Langsung aktifkan form baru
+            $newForm->created_at = now();
+            $newForm->updated_at = now();
+            $newForm->save();
+
+            // 3. Duplikasi semua field yang ada di template
+            foreach ($form->formFields as $field) {
+                $newField = $field->replicate();
+                $newField->form_id = $newForm->id; // Hubungkan ke form baru
+                $newField->save();
+            }
+
+            return $newForm;
+        });
+
+        return response()->json($newForm->load('formFields'), 201);
     }
 }

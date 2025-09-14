@@ -9,6 +9,7 @@ use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\DashboardController;
 
 // Rute Publik (tidak perlu login)
 Route::post('/uploads', [FileUploadController::class, 'store']);
@@ -23,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::post('/logout', [AuthController::class, 'logout']); // <-- Rute Logout
 
+    Route::post('/forms/{form}/clone', [FormController::class, 'clone']);
+
     // Pindahkan rute-rute yang butuh proteksi ke sini
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('forms', FormController::class)->except(['show']); // show sudah di atas
@@ -32,4 +35,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Ini akan membuat GET, POST, SHOW, DELETE untuk submissions.
     Route::apiResource('forms.submissions', SubmissionController::class)->scoped()->except(['update']);
     Route::apiResource('admins', AdminController::class);
+    // Rute untuk data statistik dashboard
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 });
