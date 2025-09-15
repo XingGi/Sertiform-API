@@ -20,7 +20,7 @@ class FormController extends Controller
                 return $query->where('is_template', $request->query('is_template'));
             })
             ->latest()
-            ->get();
+            ->paginate(10);
 
         return response()->json($forms);
     }
