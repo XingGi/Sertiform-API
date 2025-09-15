@@ -13,7 +13,7 @@ class FormFieldController extends Controller
 {
     public function index(Form $form)
     {
-        return response()->json($form->formFields()->with('options')->get());
+        return response()->json($form->formFields()->with('options')->orderBy('ordering')->get());
     }
 
     public function store(Request $request, Form $form)
@@ -92,5 +92,19 @@ class FormFieldController extends Controller
     {
         $formField->delete();
         return response()->json(null, 204);
+    }
+
+    public function updateOrder(Request $request)
+    {
+        $request->validate([
+            'fields' => 'required|array',
+            'fields.*' => 'integer|exists:form_fields,id',
+        ]);
+
+        foreach ($request->fields as $index => $fieldId) {
+            FormField::where('id', $fieldId)->update(['ordering' => $index]);
+        }
+
+        return response()->json(['message' => 'Urutan field berhasil diperbarui.']);
     }
 }

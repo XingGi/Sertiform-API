@@ -34,4 +34,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('forms', FormController::class)->except(['show']); // show sudah di atas
     Route::apiResource('forms.form-fields', FormFieldController::class)->scoped();
     Route::apiResource('admins', AdminController::class);
+    Route::post('/form-fields/update-order', [FormFieldController::class, 'updateOrder']);
 });
