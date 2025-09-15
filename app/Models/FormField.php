@@ -17,6 +17,8 @@ class FormField extends Model
         'name', // ini akan kita generate otomatis
         'type',
         'is_required',
+        'conditional_on_field_id',
+        'conditional_on_value',
     ];
 
     public function form(): BelongsTo

@@ -34,6 +34,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Gantikan Route::post(...) yang lama dengan ini.
     // Ini akan membuat GET, POST, SHOW, DELETE untuk submissions.
     Route::apiResource('forms.submissions', SubmissionController::class)->scoped()->except(['update']);
+    // RUTE BARU KHUSUS ADMIN UNTUK MENGAMBIL DETAIL FORM/TEMPLATE
+    Route::get('/admin/forms/{form}', [FormController::class, 'showForAdmin']);
     Route::apiResource('admins', AdminController::class);
     // Rute untuk data statistik dashboard
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);

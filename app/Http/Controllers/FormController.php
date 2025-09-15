@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Form;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class FormController extends Controller
 {
@@ -51,7 +52,25 @@ class FormController extends Controller
      */
     public function show(Form $form)
     {
-        // Memuat relasi category dan juga formFields
+        // Jika user yang meminta adalah user yang sudah login (admin),
+    // mereka boleh melihat form apa saja.
+    if (Auth::check()) {
+        $form->load(['category', 'formFields.options']);
+        return response()->json($form);
+    }
+
+    // Jika user adalah tamu (tidak login), jalankan aturan keamanan publik.
+    if ($form->is_template || !$form->is_active) {
+        return response()->json(['message' => 'Form tidak ditemukan.'], 404);
+    }
+
+    // Jika lolos, berikan data form publik.
+    $form->load(['category', 'formFields.options']);
+    return response()->json($form);
+    }
+
+    public function showForAdmin(Form $form)
+    {
         $form->load(['category', 'formFields.options']);
         return response()->json($form);
     }
@@ -87,34 +106,35 @@ class FormController extends Controller
 
     public function clone(Request $request, Form $form)
     {
-        // Pastikan yang di-clone adalah sebuah template
         if (!$form->is_template) {
             return response()->json(['message' => 'Hanya template yang bisa di-clone.'], 400);
         }
 
-        // Validasi judul untuk form baru
         $validated = $request->validate(['title' => 'required|string|max:255']);
 
-        // Gunakan transaction untuk memastikan semua proses berhasil atau tidak sama sekali
         $newForm = DB::transaction(function () use ($form, $validated) {
-            // 1. Duplikasi data form (template) menggunakan replicate()
-            $newForm = $form->replicate();
-            
-            // 2. Ubah propertinya menjadi form aktif dengan judul baru
+            $newForm = $form->replicate(['meta_pixel_code']); // Replicate, tapi kosongkan pixel code
             $newForm->title = $validated['title'];
-            $newForm->is_template = false; // Ini penting!
-            $newForm->is_active = true; // Langsung aktifkan form baru
+            $newForm->is_template = false;
+            $newForm->is_active = true;
             $newForm->created_at = now();
             $newForm->updated_at = now();
             $newForm->save();
 
-            // 3. Duplikasi semua field yang ada di template
             foreach ($form->formFields as $field) {
                 $newField = $field->replicate();
-                $newField->form_id = $newForm->id; // Hubungkan ke form baru
+                $newField->form_id = $newForm->id;
                 $newField->save();
-            }
 
+                // Duplikasi juga options untuk field tersebut
+                if ($field->options->isNotEmpty()) {
+                    foreach($field->options as $option) {
+                        $newOption = $option->replicate();
+                        $newOption->form_field_id = $newField->id;
+                        $newOption->save();
+                    }
+                }
+            }
             return $newForm;
         });
 
