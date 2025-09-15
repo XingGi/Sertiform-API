@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Form;
+use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -49,6 +50,8 @@ class SubmissionController extends Controller
                 $fieldRules[] = 'email';
             } elseif ($field->type === 'number') {
                 $fieldRules[] = 'numeric';
+            } else if ($field->type === 'file') {
+                $fieldRules[] = 'string'; // Path file disimpan sebagai string
             } else {
                 $fieldRules[] = 'string';
             }
@@ -57,25 +60,23 @@ class SubmissionController extends Controller
         }
 
         // 3. Lakukan validasi
-        $validator = Validator::make($request->all(), $rules);
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $validatedData = Validator::make($request->all(), $rules)->validate();
 
         // 4. Gunakan Database Transaction untuk keamanan data
         try {
-            $submission = DB::transaction(function () use ($form, $request, $formFields) {
+            $submission = DB::transaction(function () use ($form, $request, $formFields, $validatedData) {
                 // Buat record baru di tabel 'submissions'
                 $submission = $form->submissions()->create([
+                    'form_id' => $form->id,
                     'submitted_at' => now(),
                 ]);
 
                 // Simpan setiap jawaban ke tabel 'submission_data'
                 foreach ($formFields as $field) {
-                    if ($request->has($field->name)) {
+                    if (isset($validatedData[$field->name])) {
                         $submission->submissionData()->create([
                             'form_field_id' => $field->id,
-                            'value' => $request->input($field->name),
+                            'value' => $validatedData[$field->name],
                         ]);
                     }
                 }

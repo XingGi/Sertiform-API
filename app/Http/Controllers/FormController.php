@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class FormController extends Controller
 {
     /**
-     * Menampilkan semua data form beserta kategorinya.
+     * Menampilkan data form, sekarang dengan filter is_template.
      */
     public function index(Request $request)
     {
@@ -32,46 +32,42 @@ class FormController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required_if:is_template,false', 'nullable', 'string', 'alpha_dash', 'max:255', 'unique:forms,slug'],
             'description' => 'nullable|string',
-            // 'exists:categories,id' memastikan category_id yang dikirim ada di tabel categories.
             'category_id' => 'required|exists:categories,id',
             'is_template' => 'sometimes|boolean',
             'meta_pixel_code' => 'nullable|string',
         ]);
 
         $form = Form::create($validatedData);
-
-        // Memuat relasi category agar ikut tampil di response JSON
         $form->load('category');
 
         return response()->json($form, 201);
     }
 
     /**
-     * Menampilkan satu data form spesifik.
+     * Menampilkan satu data form spesifik (untuk publik dan admin).
      */
     public function show(Form $form)
     {
-        // Jika user yang meminta adalah user yang sudah login (admin),
-    // mereka boleh melihat form apa saja.
-    if (Auth::check()) {
+        if (!Auth::check() && ($form->is_template || !$form->is_active)) {
+            return response()->json(['message' => 'Form tidak ditemukan.'], 404);
+        }
+
         $form->load(['category', 'formFields.options']);
         return response()->json($form);
     }
-
-    // Jika user adalah tamu (tidak login), jalankan aturan keamanan publik.
-    if ($form->is_template || !$form->is_active) {
-        return response()->json(['message' => 'Form tidak ditemukan.'], 404);
-    }
-
-    // Jika lolos, berikan data form publik.
-    $form->load(['category', 'formFields.options']);
-    return response()->json($form);
-    }
-
+    
+    /**
+     * Menampilkan satu data form spesifik hanya untuk admin (digunakan di FormDesigner).
+     */
     public function showForAdmin(Form $form)
     {
-        $form->load(['category', 'formFields.options']);
+         $form->load([
+            'category', 
+            'formFields.options', 
+            'submissions.submissionData.formField'
+        ]);
         return response()->json($form);
     }
 
@@ -82,9 +78,10 @@ class FormController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required_if:is_template,false', 'nullable', 'string', 'alpha_dash', 'max:255', 'unique:forms,slug,' . $form->id],
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
-            'is_active' => 'sometimes|boolean', // 'sometimes' berarti hanya validasi jika ada di request
+            'is_active' => 'sometimes|boolean',
             'is_template' => 'sometimes|boolean',
             'meta_pixel_code' => 'nullable|string',
         ]);
@@ -104,17 +101,24 @@ class FormController extends Controller
         return response()->json(null, 204);
     }
 
+    /**
+     * Meng-clone sebuah template menjadi form aktif.
+     */
     public function clone(Request $request, Form $form)
     {
         if (!$form->is_template) {
             return response()->json(['message' => 'Hanya template yang bisa di-clone.'], 400);
         }
 
-        $validated = $request->validate(['title' => 'required|string|max:255']);
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'slug' => 'required|string|alpha_dash|max:255|unique:forms,slug',
+        ]);
 
         $newForm = DB::transaction(function () use ($form, $validated) {
-            $newForm = $form->replicate(['meta_pixel_code']); // Replicate, tapi kosongkan pixel code
+            $newForm = $form->replicate(['meta_pixel_code']);
             $newForm->title = $validated['title'];
+            $newForm->slug = $validated['slug'];
             $newForm->is_template = false;
             $newForm->is_active = true;
             $newForm->created_at = now();
@@ -126,7 +130,6 @@ class FormController extends Controller
                 $newField->form_id = $newForm->id;
                 $newField->save();
 
-                // Duplikasi juga options untuk field tersebut
                 if ($field->options->isNotEmpty()) {
                     foreach($field->options as $option) {
                         $newOption = $option->replicate();

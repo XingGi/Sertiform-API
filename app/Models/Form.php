@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Submission;
+use Illuminate\Support\Str;
 
 class Form extends Model
 {
@@ -15,6 +16,7 @@ class Form extends Model
     protected $fillable = [
         'category_id',
         'title',
+        'slug',
         'description',
         'is_active',
         'is_template',
@@ -44,5 +46,5 @@ class Form extends Model
     public function submissions(): HasMany // <-- TAMBAHKAN FUNGSI INI
     {                                      //
         return $this->hasMany(Submission::class); //
-    }   
+    }
 }
