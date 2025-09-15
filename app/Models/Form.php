@@ -21,6 +21,7 @@ class Form extends Model
         'is_active',
         'is_template',
         'meta_pixel_code',
+        'success_redirect_url',
     ];
 
     /**

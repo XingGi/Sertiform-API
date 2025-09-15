@@ -37,6 +37,7 @@ class FormController extends Controller
             'category_id' => 'required|exists:categories,id',
             'is_template' => 'sometimes|boolean',
             'meta_pixel_code' => 'nullable|string',
+            'success_redirect_url' => 'nullable|url',
         ]);
 
         $form = Form::create($validatedData);
@@ -84,6 +85,7 @@ class FormController extends Controller
             'is_active' => 'sometimes|boolean',
             'is_template' => 'sometimes|boolean',
             'meta_pixel_code' => 'nullable|string',
+            'success_redirect_url' => 'nullable|url',
         ]);
 
         $form->update($validatedData);
