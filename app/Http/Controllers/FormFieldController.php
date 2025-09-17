@@ -25,6 +25,9 @@ class FormFieldController extends Controller
             'options' => 'nullable|array',
             'options.*.label' => 'required_with:options|string',
             'options.*.value' => 'required_with:options|string',
+            'conditional_logic_enabled' => 'sometimes|boolean',
+            'conditional_on_field_id' => 'nullable|exists:form_fields,id',
+            'conditional_on_value' => 'nullable|string|max:255',
         ]);
 
         $formField = DB::transaction(function () use ($form, $validatedData, $request) {
@@ -32,11 +35,17 @@ class FormFieldController extends Controller
             unset($fieldData['options']);
             $fieldData['name'] = Str::slug($validatedData['label'], '_');
             
+            // 2. TAMBAHKAN LOGIKA PENYIMPANAN di sini
+            // Jika checkbox tidak dicentang, pastikan data kondisional dikosongkan
+            if (empty($validatedData['conditional_logic_enabled'])) {
+                $fieldData['conditional_on_field_id'] = null;
+                $fieldData['conditional_on_value'] = null;
+            }
+            
             $formField = $form->formFields()->create($fieldData);
 
             if ($request->filled('options')) {
                 foreach ($validatedData['options'] as $option) {
-                    // Perbaikan: Ambil hanya data yang diperlukan
                     $formField->options()->create([
                         'label' => $option['label'],
                         'value' => $option['value'],
@@ -56,6 +65,7 @@ class FormFieldController extends Controller
 
     public function update(Request $request, Form $form, FormField $formField)
     {
+        // 1. TAMBAHKAN VALIDASI BARU di sini
         $validatedData = $request->validate([
             'label' => 'sometimes|string|max:255',
             'type' => ['sometimes', Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file'])],
@@ -63,6 +73,10 @@ class FormFieldController extends Controller
             'options' => 'nullable|array',
             'options.*.label' => 'required_with:options|string',
             'options.*.value' => 'required_with:options|string',
+            // --- Baris-baris baru untuk logika kondisional ---
+            'conditional_logic_enabled' => 'sometimes|boolean',
+            'conditional_on_field_id' => 'nullable|exists:form_fields,id',
+            'conditional_on_value' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($formField, $validatedData, $request) {
@@ -71,12 +85,19 @@ class FormFieldController extends Controller
             if (isset($validatedData['label'])) {
                 $fieldData['name'] = Str::slug($validatedData['label'], '_');
             }
+
+            // 2. TAMBAHKAN LOGIKA PENYIMPANAN di sini
+            // Jika checkbox tidak dicentang, pastikan data kondisional dikosongkan
+            if (empty($validatedData['conditional_logic_enabled'])) {
+                $fieldData['conditional_on_field_id'] = null;
+                $fieldData['conditional_on_value'] = null;
+            }
+
             $formField->update($fieldData);
 
             if ($request->has('options')) {
                 $formField->options()->delete();
                 foreach ($validatedData['options'] as $option) {
-                    // Perbaikan: Ambil hanya data yang diperlukan
                     $formField->options()->create([
                         'label' => $option['label'],
                         'value' => $option['value'],
