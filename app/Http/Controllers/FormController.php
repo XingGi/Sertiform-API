@@ -14,15 +14,37 @@ class FormController extends Controller
      */
     public function index(Request $request)
     {
-        $forms = Form::with('category')
-            ->when($request->has('is_template'), function ($query) use ($request) {
-                // Jika ada parameter ?is_template=... di URL, filter berdasarkan itu.
-                return $query->where('is_template', $request->query('is_template'));
-            })
-            ->latest()
-            ->paginate(10);
+        $query = Form::with('category');
 
-        return response()->json($forms);
+        // Filter berdasarkan is_template
+        $query->when($request->has('is_template'), function ($q) use ($request) {
+            $q->where('is_template', $request->query('is_template'));
+        });
+
+        // Fitur Search
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where('title', 'like', "%{$searchTerm}%");
+        }
+
+        // Fitur Filter by Category
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Fitur Sort
+        if ($request->filled('sort')) {
+            $sortField = $request->sort;
+            $sortDirection = $request->direction ?? 'asc';
+            // Validasi untuk keamanan, hanya izinkan sort pada kolom yang aman
+            if (in_array($sortField, ['title', 'created_at'])) {
+                $query->orderBy($sortField, $sortDirection);
+            }
+        } else {
+            $query->latest(); // Default sorting
+        }
+
+        return response()->json($query->paginate(10));
     }
 
     /**
