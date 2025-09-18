@@ -6,6 +6,8 @@ use App\Models\Form;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Exports\SubmissionsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class FormController extends Controller
 {
@@ -93,6 +95,12 @@ class FormController extends Controller
             'submissions.submissionData.formField'
         ]);
         return response()->json($form);
+    }
+
+    public function export(Form $form)
+    {
+        $fileName = 'submissions-' . $form->slug . '-' . now()->format('Ymd') . '.xlsx';
+        return Excel::download(new SubmissionsExport($form), $fileName);
     }
 
     /**

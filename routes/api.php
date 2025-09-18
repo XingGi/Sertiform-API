@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/forms/{form}/clone', [FormController::class, 'clone']);
     Route::get('/admin/forms/{form}', [FormController::class, 'showForAdmin']);
+    Route::get('/forms/{form}/export', [FormController::class, 'export']);
 
     Route::get('/categories-list', [CategoryController::class, 'listAll']);
     Route::apiResource('categories', CategoryController::class);
