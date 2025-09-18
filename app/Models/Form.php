@@ -18,6 +18,7 @@ class Form extends Model
         'title',
         'slug',
         'description',
+        'background_image_path',
         'is_active',
         'is_template',
         'meta_pixel_code',
