@@ -33,15 +33,16 @@ class FormController extends Controller
         }
 
         // Fitur Sort
-        if ($request->filled('sort')) {
-            $sortField = $request->sort;
-            $sortDirection = $request->direction ?? 'asc';
-            // Validasi untuk keamanan, hanya izinkan sort pada kolom yang aman
-            if (in_array($sortField, ['title', 'created_at'])) {
-                $query->orderBy($sortField, $sortDirection);
-            }
+        $sortField = $request->input('sort_field', $request->input('sort', 'created_at')); 
+    
+        // Ambil parameter direction. Utamakan 'sort_direction', jika tidak ada, cari 'direction'.
+        $sortDirection = $request->input('sort_direction', $request->input('direction', 'desc'));
+
+        // Validasi untuk keamanan
+        if (in_array($sortField, ['title', 'created_at']) && in_array($sortDirection, ['asc', 'desc'])) {
+            $query->orderBy($sortField, $sortDirection);
         } else {
-            $query->latest(); // Default sorting
+            $query->latest('created_at'); // Fallback ke default
         }
 
         return response()->json($query->paginate(10));
