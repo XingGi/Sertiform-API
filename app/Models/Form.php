@@ -49,4 +49,9 @@ class Form extends Model
     {                                      //
         return $this->hasMany(Submission::class); //
     }
+
+    public function redirects(): HasMany
+    {
+        return $this->hasMany(FormRedirect::class);
+    }
 }

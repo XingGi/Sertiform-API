@@ -7,6 +7,7 @@ use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class SubmissionController extends Controller
 {
@@ -84,9 +85,32 @@ class SubmissionController extends Controller
                 return $submission;
             });
 
+            $redirectUrl = $form->success_redirect_url;
+
+            $redirectRules = $form->redirects()->get();
+
+            if ($redirectRules->isNotEmpty()) {
+                foreach ($validatedData as $fieldName => $value) {
+                    $field = $formFields->firstWhere('name', $fieldName);
+                    if (!$field) continue;
+
+                    // Cari aturan yang cocok dengan jawaban user
+                    $matchingRule = $redirectRules->first(function ($rule) use ($field, $value) {
+                        return $rule->form_field_id == $field->id && $rule->trigger_value == $value;
+                    });
+
+                    // Jika ketemu, gunakan URL dari aturan tersebut dan hentikan pencarian
+                    if ($matchingRule) {
+                        $redirectUrl = $matchingRule->redirect_url;
+                        break;
+                    }
+                }
+            }
+
             return response()->json([
                 'message' => 'Form submitted successfully!',
                 'submission_id' => $submission->id,
+                'redirect_url' => $redirectUrl,
             ], 201);
 
         } catch (\Exception $e) {

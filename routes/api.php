@@ -10,6 +10,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FormRedirectController;
 
 // Rute Publik (tidak perlu login)
 Route::post('/uploads', [FileUploadController::class, 'store']);
@@ -37,4 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('forms.form-fields', FormFieldController::class)->scoped();
     Route::apiResource('admins', AdminController::class);
     Route::post('/form-fields/update-order', [FormFieldController::class, 'updateOrder']);
+    Route::get('/forms/{form}/redirects', [FormRedirectController::class, 'index']);
+    Route::post('/forms/{form}/redirects/sync', [FormRedirectController::class, 'syncRedirects']);
 });
