@@ -20,7 +20,7 @@ class FormFieldController extends Controller
     {
         $validatedData = $request->validate([
             'label' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file'])],
+            'type' => ['required', Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file', 'whatsapp'])],
             'is_required' => 'required|boolean',
             'options' => 'nullable|array',
             'options.*.label' => 'required_with:options|string',
@@ -68,7 +68,7 @@ class FormFieldController extends Controller
         // 1. TAMBAHKAN VALIDASI BARU di sini
         $validatedData = $request->validate([
             'label' => 'sometimes|string|max:255',
-            'type' => ['sometimes', Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file'])],
+            'type' => ['sometimes', Rule::in(['text', 'email', 'number', 'date', 'textarea', 'dropdown', 'radio', 'file', 'whatsapp'])],
             'is_required' => 'sometimes|boolean',
             'options' => 'nullable|array',
             'options.*.label' => 'required_with:options|string',
