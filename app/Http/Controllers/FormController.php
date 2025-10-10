@@ -24,24 +24,19 @@ class FormController extends Controller
             $q->where('is_template', $request->query('is_template'));
         });
 
-        // Fitur Search
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where('title', 'like', "%{$searchTerm}%");
         }
 
-        // Fitur Filter by Category
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
         // Fitur Sort
         $sortField = $request->input('sort_field', $request->input('sort', 'created_at')); 
-    
-        // Ambil parameter direction. Utamakan 'sort_direction', jika tidak ada, cari 'direction'.
         $sortDirection = $request->input('sort_direction', $request->input('direction', 'desc'));
 
-        // Validasi untuk keamanan
         if (in_array($sortField, ['title', 'created_at']) && in_array($sortDirection, ['asc', 'desc'])) {
             $query->orderBy($sortField, $sortDirection);
         } else {
@@ -157,7 +152,7 @@ class FormController extends Controller
         ]);
 
         $newForm = DB::transaction(function () use ($form, $request, $validated) {
-            $newForm = $form->replicate(['meta_pixel_code', 'background_image_path']);
+            $newForm = $form->replicate();
             $newForm->title = $validated['title'];
             $newForm->slug = $validated['slug'];
             $newForm->is_template = false;
