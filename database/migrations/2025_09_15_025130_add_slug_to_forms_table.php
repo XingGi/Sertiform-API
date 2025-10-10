@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('forms', function (Blueprint $table) {
             // Tambahkan kolom slug yang harus unik
-            $table->string('slug', 10)->unique()->nullable()->after('id');
+            $table->string('slug', 50)->unique()->nullable()->after('id');
         });
     }
 

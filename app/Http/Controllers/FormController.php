@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\SubmissionsExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 
 class FormController extends Controller
 {
@@ -132,6 +133,10 @@ class FormController extends Controller
      */
     public function destroy(Form $form)
     {
+        if ($form->background_image_path && Storage::disk('public')->exists($form->background_image_path)) {
+            Storage::disk('public')->delete($form->background_image_path);
+        }
+
         $form->delete();
         return response()->json(null, 204);
     }
@@ -148,16 +153,29 @@ class FormController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'slug' => 'required|string|alpha_dash|max:255|unique:forms,slug',
+            'background_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $newForm = DB::transaction(function () use ($form, $validated) {
-            $newForm = $form->replicate(['meta_pixel_code']);
+        $newForm = DB::transaction(function () use ($form, $request, $validated) {
+            $newForm = $form->replicate(['meta_pixel_code', 'background_image_path']);
             $newForm->title = $validated['title'];
             $newForm->slug = $validated['slug'];
             $newForm->is_template = false;
             $newForm->is_active = true;
             $newForm->created_at = now();
             $newForm->updated_at = now();
+            if ($request->hasFile('background_image')) {
+            // Hapus gambar lama jika ada (yang hasil replikasi)
+                if ($newForm->background_image_path && Storage::disk('public')->exists($newForm->background_image_path)) {
+                    // Catatan: Ini tidak menghapus file asli di template,
+                    // hanya menghapus file duplikat jika proses replikasi menyalin file fisik (namun di kasus kita hanya path).
+                    // Ini lebih sebagai best practice.
+                }
+                
+                // Simpan gambar baru dan timpa path-nya.
+                $path = $request->file('background_image')->store('form_backgrounds', 'public');
+                $newForm->background_image_path = $path;
+            }
             $newForm->save();
 
             foreach ($form->formFields as $field) {
