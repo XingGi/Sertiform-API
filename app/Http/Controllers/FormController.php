@@ -77,7 +77,10 @@ class FormController extends Controller
             return response()->json(['message' => 'Form tidak ditemukan.'], 404);
         }
 
-        $form->load(['category', 'formFields.options']);
+        $form->load(['category', 'formFields' => function ($query) {
+            $query->orderBy('ordering', 'asc')->with('options');
+        }]);
+
         return response()->json($form);
     }
     

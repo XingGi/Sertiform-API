@@ -35,6 +35,8 @@ class FormFieldController extends Controller
             unset($fieldData['options']);
             $fieldData['name'] = Str::slug($validatedData['label'], '_');
             
+            $lastOrder = $form->formFields()->max('ordering') ?? -1;
+            $fieldData['ordering'] = $lastOrder + 1;
             // 2. TAMBAHKAN LOGIKA PENYIMPANAN di sini
             // Jika checkbox tidak dicentang, pastikan data kondisional dikosongkan
             if (empty($validatedData['conditional_logic_enabled'])) {

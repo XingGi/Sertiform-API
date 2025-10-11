@@ -39,7 +39,7 @@ class Form extends Model
      */
     public function formFields(): HasMany
     {
-        return $this->hasMany(FormField::class);
+        return $this->hasMany(FormField::class)->orderBy('ordering');
     }
 
     /**
