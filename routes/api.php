@@ -17,6 +17,8 @@ Route::post('/uploads', [FileUploadController::class, 'store']);
 Route::get('forms/{form:slug}', [FormController::class, 'show']);
 Route::post('forms/{form:slug}/submissions', [SubmissionController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']); // <-- Rute Login
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Rute Terproteksi (harus login dengan token)
 Route::middleware('auth:sanctum')->group(function () {
