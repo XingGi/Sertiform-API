@@ -11,9 +11,36 @@ class CategoryController extends Controller
     /**
      * Menampilkan semua data kategori. (GET /api/categories)
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Category::all());
+        $query = Category::query();
+
+        // 1. Fitur Search
+        // Jika ada parameter ?search=...
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('slug', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // 2. Fitur Sort
+        // Jika ada parameter ?sort=... & ?direction=...
+        if ($request->filled('sort')) {
+            $sortField = $request->sort;
+            $sortDirection = $request->direction ?? 'asc'; // default 'asc'
+            if (in_array($sortField, ['name', 'slug'])) { // Hanya izinkan sort pada kolom tertentu
+                $query->orderBy($sortField, $sortDirection);
+            }
+        } else {
+            $query->latest(); // Default sort berdasarkan yang terbaru
+        }
+
+        // 3. Pagination (tetap ada)
+        $categories = $query->paginate(10);
+
+        return response()->json($categories);
     }
 
     /**
@@ -72,5 +99,11 @@ class CategoryController extends Controller
 
         // Kirim response kosong dengan status 204 (No Content)
         return response()->json(null, 204);
+    }
+
+    public function listAll()
+    {
+        // Ambil semua kategori, urutkan berdasarkan nama, dan kirim sebagai array biasa.
+        return response()->json(Category::orderBy('name')->get());
     }
 }

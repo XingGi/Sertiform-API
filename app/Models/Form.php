@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Submission;
+use Illuminate\Support\Str;
 
 class Form extends Model
 {
@@ -15,8 +16,13 @@ class Form extends Model
     protected $fillable = [
         'category_id',
         'title',
+        'slug',
         'description',
+        'background_image_path',
         'is_active',
+        'is_template',
+        'meta_pixel_code',
+        'success_redirect_url',
     ];
 
     /**
@@ -33,7 +39,7 @@ class Form extends Model
      */
     public function formFields(): HasMany
     {
-        return $this->hasMany(FormField::class);
+        return $this->hasMany(FormField::class)->orderBy('ordering');
     }
 
     /**
@@ -42,5 +48,10 @@ class Form extends Model
     public function submissions(): HasMany // <-- TAMBAHKAN FUNGSI INI
     {                                      //
         return $this->hasMany(Submission::class); //
-    }   
+    }
+
+    public function redirects(): HasMany
+    {
+        return $this->hasMany(FormRedirect::class);
+    }
 }

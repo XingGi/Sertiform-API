@@ -4,20 +4,46 @@ namespace App\Http\Controllers;
 
 use App\Models\Form;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Exports\SubmissionsExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 
 class FormController extends Controller
 {
     /**
-     * Menampilkan semua data form beserta kategorinya.
+     * Menampilkan data form, sekarang dengan filter is_template.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // 'with('category')' adalah Eager Loading.
-        // Ini membuat query lebih efisien dengan mengambil data form
-        // dan category sekaligus dalam satu waktu.
-        $forms = Form::with('category')->latest()->get();
+        $query = Form::with('category');
 
-        return response()->json($forms);
+        // Filter berdasarkan is_template
+        $query->when($request->has('is_template'), function ($q) use ($request) {
+            $q->where('is_template', $request->query('is_template'));
+        });
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where('title', 'like', "%{$searchTerm}%");
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Fitur Sort
+        $sortField = $request->input('sort_field', $request->input('sort', 'created_at')); 
+        $sortDirection = $request->input('sort_direction', $request->input('direction', 'desc'));
+
+        if (in_array($sortField, ['title', 'created_at']) && in_array($sortDirection, ['asc', 'desc'])) {
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            $query->latest('created_at'); // Fallback ke default
+        }
+
+        return response()->json($query->paginate(10));
     }
 
     /**
@@ -27,27 +53,54 @@ class FormController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required_if:is_template,false', 'nullable', 'string', 'alpha_dash', 'max:255', 'unique:forms,slug'],
             'description' => 'nullable|string',
-            // 'exists:categories,id' memastikan category_id yang dikirim ada di tabel categories.
+            'background_image_path' => 'nullable|string|max:255',
             'category_id' => 'required|exists:categories,id',
+            'is_template' => 'sometimes|boolean',
+            'meta_pixel_code' => 'nullable|string',
+            'success_redirect_url' => 'nullable|url',
         ]);
 
         $form = Form::create($validatedData);
-
-        // Memuat relasi category agar ikut tampil di response JSON
         $form->load('category');
 
         return response()->json($form, 201);
     }
 
     /**
-     * Menampilkan satu data form spesifik.
+     * Menampilkan satu data form spesifik (untuk publik dan admin).
      */
     public function show(Form $form)
     {
-        // Memuat relasi category dan juga formFields
-        $form->load(['category', 'formFields']);
+        if (!Auth::check() && ($form->is_template || !$form->is_active)) {
+            return response()->json(['message' => 'Form tidak ditemukan.'], 404);
+        }
+
+        $form->load(['category', 'formFields' => function ($query) {
+            $query->orderBy('ordering', 'asc')->with('options');
+        }]);
+
         return response()->json($form);
+    }
+    
+    /**
+     * Menampilkan satu data form spesifik hanya untuk admin (digunakan di FormDesigner).
+     */
+    public function showForAdmin(Form $form)
+    {
+         $form->load([
+            'category', 
+            'formFields.options', 
+            'submissions.submissionData.formField'
+        ]);
+        return response()->json($form);
+    }
+
+    public function export(Form $form)
+    {
+        $fileName = 'submissions-' . $form->slug . '-' . now()->format('Ymd') . '.xlsx';
+        return Excel::download(new SubmissionsExport($form), $fileName);
     }
 
     /**
@@ -57,9 +110,14 @@ class FormController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required_if:is_template,false', 'nullable', 'string', 'alpha_dash', 'max:255', 'unique:forms,slug,' . $form->id],
             'description' => 'nullable|string',
+            'background_image_path' => 'nullable|string|max:255',
             'category_id' => 'required|exists:categories,id',
-            'is_active' => 'sometimes|boolean', // 'sometimes' berarti hanya validasi jika ada di request
+            'is_active' => 'sometimes|boolean',
+            'is_template' => 'sometimes|boolean',
+            'meta_pixel_code' => 'nullable|string',
+            'success_redirect_url' => 'nullable|url',
         ]);
 
         $form->update($validatedData);
@@ -73,7 +131,67 @@ class FormController extends Controller
      */
     public function destroy(Form $form)
     {
+        if ($form->background_image_path && Storage::disk('public')->exists($form->background_image_path)) {
+            Storage::disk('public')->delete($form->background_image_path);
+        }
+
         $form->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Meng-clone sebuah template menjadi form aktif.
+     */
+    public function clone(Request $request, Form $form)
+    {
+        if (!$form->is_template) {
+            return response()->json(['message' => 'Hanya template yang bisa di-clone.'], 400);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'slug' => 'required|string|alpha_dash|max:255|unique:forms,slug',
+            'background_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $newForm = DB::transaction(function () use ($form, $request, $validated) {
+            $newForm = $form->replicate();
+            $newForm->title = $validated['title'];
+            $newForm->slug = $validated['slug'];
+            $newForm->is_template = false;
+            $newForm->is_active = true;
+            $newForm->created_at = now();
+            $newForm->updated_at = now();
+            if ($request->hasFile('background_image')) {
+            // Hapus gambar lama jika ada (yang hasil replikasi)
+                if ($newForm->background_image_path && Storage::disk('public')->exists($newForm->background_image_path)) {
+                    // Catatan: Ini tidak menghapus file asli di template,
+                    // hanya menghapus file duplikat jika proses replikasi menyalin file fisik (namun di kasus kita hanya path).
+                    // Ini lebih sebagai best practice.
+                }
+                
+                // Simpan gambar baru dan timpa path-nya.
+                $path = $request->file('background_image')->store('form_backgrounds', 'public');
+                $newForm->background_image_path = $path;
+            }
+            $newForm->save();
+
+            foreach ($form->formFields as $field) {
+                $newField = $field->replicate();
+                $newField->form_id = $newForm->id;
+                $newField->save();
+
+                if ($field->options->isNotEmpty()) {
+                    foreach($field->options as $option) {
+                        $newOption = $option->replicate();
+                        $newOption->form_field_id = $newField->id;
+                        $newOption->save();
+                    }
+                }
+            }
+            return $newForm;
+        });
+
+        return response()->json($newForm->load('formFields'), 201);
     }
 }
